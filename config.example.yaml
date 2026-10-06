@@ -1,0 +1,8 @@
+model: gemma3:1b
+max_tokens: 160
+temperature: 0.65
+top_p: 0.9
+memory_turns: 4
+system_prompt_file: system_prompt.txt
+
+
