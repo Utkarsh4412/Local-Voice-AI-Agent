@@ -3,193 +3,138 @@ import argparse
 import time
 from collections import deque
 from typing import Deque, Dict, List, Optional
+import yaml
+from loguru import logger
 
 from fastrtc import ReplyOnPause, Stream, get_stt_model, get_tts_model
-from loguru import logger
 from ollama import chat
-import yaml
 
-stt_model = get_stt_model()  # moonshine/base
-tts_model = get_tts_model()  # kokoro
+class VoiceAgent:
+    def __init__(self, config: dict):
+        self.stt = get_stt_model()
+        self.tts = get_tts_model()
+        
+        self.model_name = config.get("model", "gemma3:1b")
+        self.max_tokens = config.get("max_tokens", 200)
+        self.temperature = config.get("temperature", 0.7)
+        self.top_p = config.get("top_p", 0.9)
+        self.system_prompt = config.get("system_prompt", (
+            "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. "
+            "Your output will be converted to audio so don't include emojis or special characters in your answers. "
+            "Respond to what the user said in a creative and helpful way."
+        ))
+        
+        self.memory_turns = config.get("memory_turns", 4)
+        self.history: Deque[Dict[str, str]] = deque(maxlen=self.memory_turns * 2) if self.memory_turns > 0 else deque()
 
-# Defaults (can be overridden by CLI flags)
-MODEL_NAME = "gemma3:1b"
-SYSTEM_PROMPT = (
-    "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. "
-    "Your output will be converted to audio so don't include emojis or special characters in your answers. "
-    "Respond to what the user said in a creative and helpful way."
-)
-NUM_PREDICT = 200
-TEMPERATURE = 0.7
-TOP_P = 0.9
+    def process_audio(self, audio):
+        # 1. Transcribe Audio
+        start_stt = time.perf_counter()
+        user_text = self.stt.stt(audio)
+        logger.debug(f"🎤 Transcribed ({int((time.perf_counter() - start_stt) * 1000)}ms): {user_text}")
 
-# Short conversational memory (last few turns)
-MAX_MEMORY_TURNS = 4
-conversation_memory: Deque[Dict[str, str]] = deque(maxlen=MAX_MEMORY_TURNS * 2)
+        # 2. Prepare Context
+        context: List[Dict[str, str]] = [{"role": "system", "content": self.system_prompt}]
+        context.extend(list(self.history))
+        context.append({"role": "user", "content": user_text})
 
-logger.remove(0)
-logger.add(sys.stderr, level="DEBUG")
+        # 3. Generate Response
+        reply_text = ""
+        error = None
+        
+        for attempt in range(2):
+            try:
+                start_llm = time.perf_counter()
+                response = chat(
+                    model=self.model_name,
+                    messages=context,
+                    options={
+                        "num_predict": self.max_tokens,
+                        "temperature": self.temperature,
+                        "top_p": self.top_p,
+                    },
+                )
+                reply_text = response["message"]["content"]
+                logger.debug(f"🤖 LLM Reply ({int((time.perf_counter() - start_llm) * 1000)}ms): {reply_text}")
+                error = None
+                break
+            except Exception as e:
+                error = e
+                logger.warning(f"LLM generation failed (attempt {attempt + 1}): {e}")
+                time.sleep(0.2)
+
+        if error:
+            reply_text = "I encountered an error connecting to my brain. Please try again."
+
+        # 4. Update Memory
+        if self.memory_turns > 0:
+            self.history.append({"role": "user", "content": user_text})
+            self.history.append({"role": "assistant", "content": reply_text})
+
+        # 5. Synthesize Speech
+        start_tts = time.perf_counter()
+        for chunk in self.tts.stream_tts_sync(reply_text):
+            yield chunk
+        logger.debug(f"🔊 Synthesis finished in {int((time.perf_counter() - start_tts) * 1000)}ms")
+
+    def build_stream(self):
+        return Stream(ReplyOnPause(self.process_audio), modality="audio", mode="send-receive")
 
 
-def echo(audio):
-    # STT timing
-    stt_start = time.perf_counter()
-    transcript = stt_model.stt(audio)
-    stt_ms = int((time.perf_counter() - stt_start) * 1000)
-    logger.debug(f"🎤 Transcript ({stt_ms} ms): {transcript}")
-
-    # Build messages: system + memory + new user
-    messages: List[Dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-    if conversation_memory:
-        messages.extend(list(conversation_memory))
-    messages.append({"role": "user", "content": transcript})
-
-    # LLM call with simple retry
-    response_text: str = ""
-    last_err: Optional[Exception] = None
-    for attempt in range(2):
+def load_config(args) -> dict:
+    config = {}
+    if args.config:
         try:
-            llm_start = time.perf_counter()
-            response = chat(
-                model=MODEL_NAME,
-                messages=messages,
-                options={
-                    "num_predict": NUM_PREDICT,
-                    "temperature": TEMPERATURE,
-                    "top_p": TOP_P,
-                },
-            )
-            llm_ms = int((time.perf_counter() - llm_start) * 1000)
-            response_text = response["message"]["content"]
-            logger.debug(f"🤖 Response ({llm_ms} ms): {response_text}")
-            last_err = None
-            break
-        except Exception as e:  # best-effort resilience
-            last_err = e
-            logger.warning(f"LLM request failed (attempt {attempt + 1}): {e}")
-            time.sleep(0.2)
-
-    if last_err is not None:
-        response_text = "I'm sorry, I had trouble responding. Could you please repeat that?"
-
-    # Update short memory
-    conversation_memory.append({"role": "user", "content": transcript})
-    conversation_memory.append({"role": "assistant", "content": response_text})
-
-    # TTS timing
-    tts_start = time.perf_counter()
-    for audio_chunk in tts_model.stream_tts_sync(response_text):
-        yield audio_chunk
-    tts_ms = int((time.perf_counter() - tts_start) * 1000)
-    logger.debug(f"🔊 TTS time: {tts_ms} ms")
-
-
-def create_stream():
-    return Stream(ReplyOnPause(echo), modality="audio", mode="send-receive")
+            with open(args.config, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f) or {}
+        except Exception as e:
+            logger.warning(f"Failed to load config '{args.config}': {e}")
+            
+    # CLI Overrides
+    if args.model: config["model"] = args.model
+    if args.max_tokens is not None: config["max_tokens"] = args.max_tokens
+    if args.temperature is not None: config["temperature"] = args.temperature
+    if args.top_p is not None: config["top_p"] = args.top_p
+    
+    prompt_path = args.system_prompt or config.get("system_prompt_file")
+    if prompt_path:
+        try:
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                config["system_prompt"] = f.read().strip()
+        except Exception as e:
+            logger.warning(f"Failed to load system prompt: {e}")
+            
+    return config
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Local Voice Chat Advanced")
-    parser.add_argument(
-        "--phone",
-        action="store_true",
-        help="Launch with FastRTC phone interface (get a temp phone number)",
-    )
-    parser.add_argument(
-        "--config",
-        default="config.yaml",
-        help="Optional YAML config file with defaults",
-    )
-    parser.add_argument(
-        "--model",
-        default="gemma3:1b",
-        help="Ollama model to use (default: gemma3:1b)",
-    )
-    parser.add_argument(
-        "--system-prompt",
-        default=None,
-        help="Path to a text file with a custom system prompt",
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=200,
-        help="Maximum number of tokens to generate (default: 200)",
-    )
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        default=0.7,
-        help="Sampling temperature (default: 0.7)",
-    )
-    parser.add_argument(
-        "--top-p",
-        type=float,
-        default=0.9,
-        help="Nucleus sampling top-p (default: 0.9)",
-    )
-    parser.add_argument(
-        "--share",
-        action="store_true",
-        help="Create a public share link for the Gradio UI",
-    )
-    parser.add_argument(
-        "--server-name",
-        default=None,
-        help="Gradio server_name (e.g., 0.0.0.0 for LAN access)",
-    )
-    parser.add_argument(
-        "--log-level",
-        default="DEBUG",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        help="Log verbosity (default: DEBUG)",
-    )
+    parser = argparse.ArgumentParser(description="Voice AI Agent")
+    parser.add_argument("--config", default="config.yaml", help="Path to YAML config")
+    parser.add_argument("--model", help="Override Ollama model")
+    parser.add_argument("--system-prompt", help="Path to system prompt text file")
+    parser.add_argument("--max-tokens", type=int, help="Max generation tokens")
+    parser.add_argument("--temperature", type=float, help="Sampling temperature")
+    parser.add_argument("--top-p", type=float, help="Nucleus sampling top-p")
+    parser.add_argument("--phone", action="store_true", help="Use FastRTC phone interface")
+    parser.add_argument("--share", action="store_true", help="Create Gradio public link")
+    parser.add_argument("--server-name", help="Gradio server name (e.g. 0.0.0.0)")
+    parser.add_argument("--log-level", default="DEBUG", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    
     args = parser.parse_args()
-
-    # Apply configuration (config file defaults, CLI overrides)
-    config_data = {}
-    if args.config:
-        try:
-            with open(args.config, "r", encoding="utf-8") as cf:
-                config_data = yaml.safe_load(cf) or {}
-        except FileNotFoundError:
-            config_data = {}
-        except Exception as e:
-            logger.warning(f"Could not read config file '{args.config}': {e}")
-
-    MODEL_NAME = args.model or config_data.get("model", MODEL_NAME)
-    NUM_PREDICT = args.max_tokens or config_data.get("max_tokens", NUM_PREDICT)
-    TEMPERATURE = args.temperature if args.temperature is not None else config_data.get("temperature", TEMPERATURE)
-    TOP_P = args.top_p if args.top_p is not None else config_data.get("top_p", TOP_P)
-    MAX_MEMORY_TURNS = int(config_data.get("memory_turns", MAX_MEMORY_TURNS))
-    # Recreate deque to change capacity (maxlen is read-only)
-    if MAX_MEMORY_TURNS > 0:
-        conversation_memory = deque(conversation_memory, maxlen=MAX_MEMORY_TURNS * 2)
-
-    if args.system_prompt:
-        try:
-            with open(args.system_prompt, "r", encoding="utf-8") as f:
-                SYSTEM_PROMPT = f.read().strip() or SYSTEM_PROMPT
-        except Exception as e:
-            logger.warning(f"Could not read system prompt file: {e}")
-    elif config_data.get("system_prompt_file"):
-        try:
-            with open(config_data["system_prompt_file"], "r", encoding="utf-8") as f:
-                SYSTEM_PROMPT = f.read().strip() or SYSTEM_PROMPT
-        except Exception as e:
-            logger.warning(f"Could not read system prompt file from config: {e}")
-
+    
     logger.remove()
     logger.add(sys.stderr, level=args.log_level)
-
-    stream = create_stream()
-
+    
+    app_config = load_config(args)
+    agent = VoiceAgent(app_config)
+    stream = agent.build_stream()
+    
     if args.phone:
-        logger.info("Launching with FastRTC phone interface...")
+        logger.info("Starting phone interface...")
         stream.fastphone()
     else:
-        logger.info("Launching with Gradio UI...")
-        launch_kwargs = {"share": args.share}
+        logger.info("Starting web interface...")
+        kwargs = {"share": args.share}
         if args.server_name:
-            launch_kwargs["server_name"] = args.server_name
-        stream.ui.launch(**launch_kwargs)
+            kwargs["server_name"] = args.server_name
+        stream.ui.launch(**kwargs)
