@@ -154,8 +154,14 @@ When you speak, your audio is:
 - Model missing: run `ollama pull gemma3:1b`
 - FFmpeg warning from pydub: safe to ignore for this app
 
-## Credits / Attribution
+## What this fork adds
 
-Based on [local-voice-ai-agent](https://github.com/jesuscopado/local-voice-ai-agent) by **Jesús Copado** ([MIT License](./LICENSE)).
+- YAML configuration (`config.yaml`)
+- Short conversational memory (`deque`)
+- LLM response retry logic
+- Timing metrics logging (`loguru`)
+- Advanced CLI flags (`--max-tokens`, `--temperature`, `--top-p`, `--system-prompt`, `--phone`, `--server-name`)
+- Custom system prompt support
 
-- Tutorial: [Local Voice AI Agent in 19 lines of Python](https://youtu.be/M6vI4Wk-Y4Q?si=BGuYTTjvWTLQ1dAY)
+---
+Originally forked from [jesuscopado/local-voice-ai-agent](https://github.com/jesuscopado/local-voice-ai-agent) by Jesús Copado, MIT License.
