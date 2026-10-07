@@ -1,9 +1,49 @@
+# Virtual environment
 .venv/
+
+# Private working docs (not published)
 docs/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Environment and secrets
 .env
+*.env
+
+# Config files with real values (examples are checked in)
 config.yaml
 system_prompt.txt
+
+# Editor directories
 .idea/
 .vscode/
+
+# Model weights and ONNX binaries — never commit these
+*.onnx
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.ct2/
+models/
+weights/
+
+# HuggingFace cache
+.cache/
+
+# Test audio generated during verification (not part of the codebase)
+test_hindi.wav
+test_*.wav
+
+# Benchmark results are intentionally NOT gitignored.
+# They are committed data — see docs/MASTER_PLAN.md §3b.
+# benchmarks/results/ — kept
+
+# OS artifacts
+Thumbs.db
+.DS_Store

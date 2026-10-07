@@ -1,0 +1,114 @@
+"""
+vaak/llm/ollama.py — OllamaLLM adapter (non-streaming, P1 baseline).
+
+P4 will add stream=True. This module wraps ollama.chat() with:
+  - Configurable keep_alive to keep the model loaded between requests.
+  - Startup warmup ping to avoid paying model-load latency on the first call.
+  - One automatic retry on failure (matching original local_voice_chat.py
+    behaviour, but without the 200 ms sleep anti-pattern — we log and move on).
+"""
+
+from __future__ import annotations
+
+import time
+
+import ollama
+from loguru import logger
+
+from vaak.interfaces import BaseLLM
+
+
+class OllamaLLM(BaseLLM):
+    """Ollama-backed LLM (non-streaming P1 baseline).
+
+    Args:
+        model: Ollama model tag (e.g. "gemma3:1b").
+        keep_alive: How long Ollama keeps the model in VRAM/RAM between
+                    requests (e.g. "10m"). Passed directly to ollama.chat().
+        ollama_host: Base URL of the Ollama REST server.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: str = "gemma3:1b",
+        keep_alive: str = "10m",
+        ollama_host: str = "http://localhost:11434",
+    ) -> None:
+        self._model = model
+        self._keep_alive = keep_alive
+        self._client = ollama.Client(host=ollama_host)
+
+    # ------------------------------------------------------------------
+    # BaseLLM implementation
+    # ------------------------------------------------------------------
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 200,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+    ) -> str:
+        """Generate a complete reply (non-streaming).
+
+        Retries once on transient failures. Returns a fallback error string
+        rather than raising, so the pipeline can still yield a TTS response.
+        """
+        options = {
+            "num_predict": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+        }
+
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                t0 = time.perf_counter()
+                response = self._client.chat(
+                    model=self._model,
+                    messages=messages,
+                    options=options,
+                    keep_alive=self._keep_alive,
+                )
+                elapsed_ms = int((time.perf_counter() - t0) * 1000)
+                text: str = response["message"]["content"]
+                logger.debug(
+                    f"OllamaLLM generated {len(text)} chars in {elapsed_ms} ms "
+                    f"(model={self._model})"
+                )
+                return text
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    f"OllamaLLM attempt {attempt + 1}/2 failed: {exc}"
+                )
+
+        logger.error(f"OllamaLLM failed after 2 attempts: {last_exc}")
+        return "I encountered an error connecting to my brain. Please try again."
+
+    # ------------------------------------------------------------------
+    # Warmup
+    # ------------------------------------------------------------------
+
+    def warmup(self) -> None:
+        """Ping Ollama with a minimal prompt to load the model into memory.
+
+        This avoids the model-load latency hit on the first real user request.
+        Failure is logged but does not prevent startup.
+        """
+        logger.info(f"Warming up OllamaLLM model '{self._model}'…")
+        try:
+            self._client.chat(
+                model=self._model,
+                messages=[{"role": "user", "content": "hi"}],
+                options={"num_predict": 1},
+                keep_alive=self._keep_alive,
+            )
+            logger.info(f"OllamaLLM '{self._model}' warm-up complete.")
+        except Exception as exc:
+            logger.warning(
+                f"OllamaLLM warm-up failed (Ollama may not be running): {exc}. "
+                "First request will pay model-load latency."
+            )
