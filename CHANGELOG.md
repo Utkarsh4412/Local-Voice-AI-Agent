@@ -26,7 +26,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Shared-memory bug: `Session` created per WebRTC connection, not shared across callers
 
 ### Removed
-- `local_voice_chat.py` original implementation (replaced by thin shim importing `vaak.cli`)
+- `local_voice_chat.py` original implementation (replaced by `vaak.cli`)
 
 ### Upstream
 - Forked from [jesuscopado/local-voice-ai-agent](https://github.com/jesuscopado/local-voice-ai-agent) (MIT)
@@ -35,5 +35,5 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ---
 
 *Previous entries (pre-fork history):*
-- Flattened layout; renamed advanced script to local_voice_chat.py
+- Flattened layout
 - Removed redundant script and duplicate README; added pyyaml

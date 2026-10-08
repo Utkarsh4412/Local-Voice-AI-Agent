@@ -4,7 +4,7 @@ An object-oriented, local voice chat agent built on FastRTC, Ollama, and Kokoro.
 This agent acts as a virtual conversational partner that runs 100% locally on your machine.
 
 ## Architecture Highlights
-- **Object-Oriented Design**: Encapsulates state into a `VoiceAgent` class to safely support multiple concurrent WebRTC stream sessions without memory bleed.
+- **Object-Oriented Design**: Encapsulates state into a session handler to safely support multiple concurrent WebRTC stream sessions without memory bleed.
 - **Robust Configuration**: Supports overlapping configuration through defaults, YAML config files, and CLI arguments.
 - **Performance Logging**: Implements precise `perf_counter` timing for the STT, LLM, and TTS pipelines.
 
@@ -18,20 +18,20 @@ This agent acts as a virtual conversational partner that runs 100% locally on yo
    ```
 4. Download the base language model:
    ```powershell
-   ollama pull gemma3:1b
+   ollama pull llama3.2:1b
    ```
 
 ## Usage
 
 ```powershell
 # Standard local web UI
-python local_voice_chat.py
+uv run vaak
 
 # Public sharing via Gradio
-python local_voice_chat.py --share
+uv run vaak --share
 
 # Phone interface (experimental)
-python local_voice_chat.py --phone
+uv run vaak --phone
 ```
 
 ### Advanced Configuration
@@ -40,7 +40,7 @@ You can provide a `config.yaml` file (see `config.example.yaml`) or use CLI flag
 
 | Flag | Description |
 |---|---|
-| `--model` | Ollama model to use (default: gemma3:1b) |
+| `--model` | Ollama model to use (default: llama3.2:1b) |
 | `--config` | Path to YAML config |
 | `--system-prompt` | Path to system prompt txt |
 | `--max-tokens` | Max completion tokens |

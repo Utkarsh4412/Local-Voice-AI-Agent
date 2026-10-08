@@ -4,8 +4,7 @@ vaak/llm/ollama.py — OllamaLLM adapter (non-streaming, P1 baseline).
 P4 will add stream=True. This module wraps ollama.chat() with:
   - Configurable keep_alive to keep the model loaded between requests.
   - Startup warmup ping to avoid paying model-load latency on the first call.
-  - One automatic retry on failure (matching original local_voice_chat.py
-    behaviour, but without the 200 ms sleep anti-pattern — we log and move on).
+  - One automatic retry on failure.
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ class OllamaLLM(BaseLLM):
     """Ollama-backed LLM (non-streaming P1 baseline).
 
     Args:
-        model: Ollama model tag (e.g. "gemma3:1b").
+        model: Ollama model tag (e.g. "llama3.2:1b").
         keep_alive: How long Ollama keeps the model in VRAM/RAM between
                     requests (e.g. "10m"). Passed directly to ollama.chat().
         ollama_host: Base URL of the Ollama REST server.
@@ -31,7 +30,7 @@ class OllamaLLM(BaseLLM):
     def __init__(
         self,
         *,
-        model: str = "gemma3:1b",
+        model: str = "llama3.2:1b",
         keep_alive: str = "10m",
         ollama_host: str = "http://localhost:11434",
     ) -> None:
@@ -86,7 +85,7 @@ class OllamaLLM(BaseLLM):
                 )
 
         logger.error(f"OllamaLLM failed after 2 attempts: {last_exc}")
-        return "I encountered an error connecting to my brain. Please try again."
+        return "I am having trouble connecting to my local LLM. Please try again later."
 
     # ------------------------------------------------------------------
     # Warmup

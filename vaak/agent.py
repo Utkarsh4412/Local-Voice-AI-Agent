@@ -10,8 +10,8 @@ wraps the Pipeline in a handler class that:
   3. Delegates process_audio() to Pipeline.run().
   4. Exposes a build_stream() helper that creates the FastRTC Stream.
 
-The shared-memory bug in the original local_voice_chat.py (a single
-VoiceAgent.history deque shared across all WebRTC callers) is fixed here:
+The shared-memory bug in the original implementation (a single
+history deque shared across all WebRTC callers) is fixed here:
 copy() creates a new Session(uuid4()) for every connection.
 """
 

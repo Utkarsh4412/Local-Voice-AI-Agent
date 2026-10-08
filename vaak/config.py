@@ -35,7 +35,7 @@ class STTConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    model: str = "gemma3:1b"
+    model: str = "llama3.2:1b"
     """Ollama model tag."""
 
     max_tokens: int = Field(default=200, gt=0, le=4096)
@@ -104,7 +104,7 @@ class AgentConfig(BaseModel):
 
     # System prompt
     system_prompt: str = (
-        "You are a helpful voice assistant in a WebRTC call. "
+        "You are a responsive voice assistant participating in a WebRTC audio call. "
         "Keep replies short and clear — your words will be spoken aloud, "
         "so avoid emojis, markdown, and special characters."
     )

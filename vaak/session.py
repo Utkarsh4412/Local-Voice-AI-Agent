@@ -4,8 +4,8 @@ and cancel event.
 
 Design note: Session is created inside the handler's copy() method (called by
 FastRTC once per WebRTC connection), so each caller gets its own isolated
-history. This fixes the shared-memory bug in the original local_voice_chat.py
-where a single VoiceAgent.history deque was shared across all connections.
+history. This fixes the shared-memory bug where a single history
+deque was shared across all connections.
 """
 
 from __future__ import annotations

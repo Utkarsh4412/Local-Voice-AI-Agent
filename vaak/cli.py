@@ -7,9 +7,8 @@ Registered in pyproject.toml as:
 
 Usage:
   uv run vaak [options]
-  uv run python local_voice_chat.py [options]  (shim)
 
-All options mirror the original local_voice_chat.py interface so existing
+All options mirror the original interface so existing
 invocations keep working.
 """
 
@@ -38,7 +37,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="Path to YAML config file (default: config.yaml in cwd).",
     )
-    p.add_argument("--model", help="Override Ollama model name (e.g. gemma3:1b).")
+    p.add_argument("--model", help="Override Ollama model name (e.g. llama3.2:1b).")
     p.add_argument(
         "--system-prompt",
         metavar="FILE",
@@ -74,7 +73,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Entry point for `uv run vaak` and `python local_voice_chat.py`."""
+    """Entry point for `uv run vaak`."""
     args = _build_parser().parse_args(argv)
 
     # Configure loguru
