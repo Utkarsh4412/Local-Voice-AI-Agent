@@ -149,7 +149,7 @@ class KokoroTTS(BaseTTS):
         """Synthesise *text* for *language* and yield (sample_rate, samples) chunks.
 
         A single Kokoro.create() call returns the full audio array; we yield it
-        as one chunk. P4 may split by sentence before calling this method.
+        as one chunk. Streaming will split by sentence before calling this method.
 
         Args:
             text: Text to synthesise.

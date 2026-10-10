@@ -1,7 +1,7 @@
 """
-vaak/llm/ollama.py — OllamaLLM adapter (non-streaming, P1 baseline).
+vaak/llm/ollama.py — OllamaLLM adapter (non-streaming).
 
-P4 will add stream=True. This module wraps ollama.chat() with:
+Streaming will replace this blocking call. This module wraps ollama.chat() with:
   - Configurable keep_alive to keep the model loaded between requests.
   - Startup warmup ping to avoid paying model-load latency on the first call.
   - One automatic retry on failure.
@@ -18,7 +18,7 @@ from vaak.interfaces import BaseLLM
 
 
 class OllamaLLM(BaseLLM):
-    """Ollama-backed LLM (non-streaming P1 baseline).
+    """Ollama-backed LLM (non-streaming).
 
     Args:
         model: Ollama model tag (e.g. "llama3.2:1b").
