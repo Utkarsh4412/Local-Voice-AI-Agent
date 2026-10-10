@@ -14,6 +14,7 @@ from vaak.session import Session
 # Fakes
 # ---------------------------------------------------------------------------
 
+
 class FakeSTT(BaseSTT):
     """Returns a fixed transcript or empty string."""
 
@@ -63,6 +64,7 @@ class FakeTTS(BaseTTS):
 
 _SILENCE = (16000, np.zeros(1600, dtype=np.float32))
 
+
 def _make_pipeline(**kwargs):
     defaults: dict = {
         "stt": FakeSTT(),
@@ -73,6 +75,7 @@ def _make_pipeline(**kwargs):
     defaults.update(kwargs)
     return Pipeline(**defaults)
 
+
 def _run(pipeline, session=None, audio=_SILENCE):
     if session is None:
         session = Session()
@@ -82,6 +85,7 @@ def _run(pipeline, session=None, audio=_SILENCE):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineHappyPath:
     def test_yields_tts_chunks(self):

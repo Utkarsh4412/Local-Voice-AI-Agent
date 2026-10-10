@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field, model_validator
 # Sub-models
 # ---------------------------------------------------------------------------
 
+
 class STTConfig(BaseModel):
     backend: Literal["moonshine", "faster_whisper"] = "moonshine"
     """STT backend. moonshine = English fast path; faster_whisper = multilingual."""
@@ -50,22 +51,22 @@ class LLMConfig(BaseModel):
 # Voice IDs confirmed from kokoro-onnx 0.4.7 get_voices() output, 2026-10-07.
 # Full list produced by: Kokoro.get_voices()
 _LANG_TO_DEFAULT_VOICE: dict[str, str] = {
-    "en":    "af_heart",   # American English female
-    "en-gb": "bf_emma",    # British English female
-    "hi":    "hf_alpha",   # Hindi female
-    "es":    "ef_dora",    # Spanish female
-    "fr":    "ff_siwis",   # French female
+    "en": "af_heart",  # American English female
+    "en-gb": "bf_emma",  # British English female
+    "hi": "hf_alpha",  # Hindi female
+    "es": "ef_dora",  # Spanish female
+    "fr": "ff_siwis",  # French female
 }
 
 # Mapping from lang code → Kokoro lang param.
 # Kokoro.create() requires lang= alongside voice=.
 LANG_TO_KOKORO_LANG: dict[str, str] = {
-    "en":    "en-us",
+    "en": "en-us",
     "en-gb": "en-gb",
-    "hi":    "hi",
-    "hi-en": "hi",   # Hinglish: use Hindi Kokoro lang; STT stays on Moonshine
-    "es":    "es",
-    "fr":    "fr",
+    "hi": "hi",
+    "hi-en": "hi",  # Hinglish: use Hindi Kokoro lang; STT stays on Moonshine
+    "es": "es",
+    "fr": "fr",
 }
 
 
@@ -95,6 +96,7 @@ class MemoryConfig(BaseModel):
 # ---------------------------------------------------------------------------
 # Top-level config
 # ---------------------------------------------------------------------------
+
 
 class AgentConfig(BaseModel):
     # Language routing
@@ -142,21 +144,22 @@ class AgentConfig(BaseModel):
 # Loader helpers
 # ---------------------------------------------------------------------------
 
+
 def _env_overrides() -> dict:
     """Read VAAK_* environment variables and return a partial config dict."""
     overrides: dict = {}
     mapping = {
-        "VAAK_LANGUAGE":        ("language",),
-        "VAAK_LOG_LEVEL":       ("log_level",),
-        "VAAK_HOST":            ("host",),
-        "VAAK_PORT":            ("port",),
-        "VAAK_SHARE":           ("share",),
-        "VAAK_LLM_MODEL":       ("llm", "model"),
-        "VAAK_LLM_HOST":        ("llm", "ollama_host"),
-        "VAAK_STT_BACKEND":     ("stt", "backend"),
-        "VAAK_TTS_VOICE":       ("tts", "voice"),
-        "VAAK_TTS_SPEED":       ("tts", "speed"),
-        "VAAK_MEMORY_TURNS":    ("memory", "memory_turns"),
+        "VAAK_LANGUAGE": ("language",),
+        "VAAK_LOG_LEVEL": ("log_level",),
+        "VAAK_HOST": ("host",),
+        "VAAK_PORT": ("port",),
+        "VAAK_SHARE": ("share",),
+        "VAAK_LLM_MODEL": ("llm", "model"),
+        "VAAK_LLM_HOST": ("llm", "ollama_host"),
+        "VAAK_STT_BACKEND": ("stt", "backend"),
+        "VAAK_TTS_VOICE": ("tts", "voice"),
+        "VAAK_TTS_SPEED": ("tts", "speed"),
+        "VAAK_MEMORY_TURNS": ("memory", "memory_turns"),
     }
     for env_key, path in mapping.items():
         val = os.environ.get(env_key)
@@ -204,10 +207,7 @@ def load_config(
     raw: dict = {}
 
     # 1. YAML file
-    path = Path(
-        config_path
-        or os.environ.get("VAAK_CONFIG", "config.yaml")
-    )
+    path = Path(config_path or os.environ.get("VAAK_CONFIG", "config.yaml"))
     if path.exists():
         with path.open(encoding="utf-8") as fh:
             loaded = yaml.safe_load(fh) or {}

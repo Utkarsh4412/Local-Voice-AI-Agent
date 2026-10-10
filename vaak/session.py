@@ -64,9 +64,7 @@ class Session:
 
     def build_context(self, system_prompt: str) -> list[dict[str, str]]:
         """Return the full message list ready to pass to BaseLLM.generate()."""
-        messages: list[dict[str, str]] = [
-            {"role": "system", "content": system_prompt}
-        ]
+        messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
         messages.extend(self.history)
         return messages
 

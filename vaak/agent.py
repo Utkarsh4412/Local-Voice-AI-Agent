@@ -80,10 +80,7 @@ class VoiceHandler:
             language=cfg.language,
             memory_turns=cfg.memory.memory_turns,
         )
-        logger.info(
-            f"New WebRTC connection — Session {session.id!r} "
-            f"lang={session.language!r}"
-        )
+        logger.info(f"New WebRTC connection — Session {session.id!r} lang={session.language!r}")
         assert self._stt is not None
         assert self._llm is not None
         assert self._tts is not None
@@ -109,9 +106,7 @@ class VoiceHandler:
     # FastRTC protocol: __call__ handles each audio segment
     # ------------------------------------------------------------------
 
-    def __call__(
-        self, audio: tuple[int, object]
-    ) -> Generator[tuple[int, object], None, None]:
+    def __call__(self, audio: tuple[int, object]) -> Generator[tuple[int, object], None, None]:
         """Process one audio segment — called by ReplyOnPause after VAD fires."""
         if self._session is None or self._pipeline is None:
             # Safety net: should never be called on the template instance.
@@ -135,6 +130,7 @@ class VoiceHandler:
 # ---------------------------------------------------------------------------
 # Factory: build a ready-to-serve VoiceHandler from an AgentConfig
 # ---------------------------------------------------------------------------
+
 
 def build_agent(config: AgentConfig) -> VoiceHandler:
     """Construct and warm up all components, return the FastRTC handler.
