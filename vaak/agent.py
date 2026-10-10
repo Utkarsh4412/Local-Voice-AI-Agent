@@ -92,6 +92,7 @@ class VoiceHandler:
             max_tokens=cfg.llm.max_tokens,
             temperature=cfg.llm.temperature,
             top_p=cfg.llm.top_p,
+            llm_error_reply=cfg.llm_error_reply,
         )
         return VoiceHandler(
             cfg,

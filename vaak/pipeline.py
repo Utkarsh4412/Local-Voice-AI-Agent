@@ -44,6 +44,7 @@ class Pipeline:
         max_tokens: int = 200,
         temperature: float = 0.7,
         top_p: float = 0.9,
+        llm_error_reply: str = "I'm having trouble thinking right now. Please try again later.",
         on_report: Callable[[LatencyReport], None] | None = None,
     ) -> None:
         self._stt = stt
@@ -53,6 +54,7 @@ class Pipeline:
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._top_p = top_p
+        self._llm_error_reply = llm_error_reply
         self._on_report = on_report
 
     # ------------------------------------------------------------------
@@ -87,7 +89,9 @@ class Pipeline:
         tts_total_ms = 0.0
         first_audio_ms = 0.0
         completed = False
+        llm_failed = False
         user_text = ""
+        t_tts = None
 
         try:
             with StageTimer() as t_e2e:
@@ -101,7 +105,8 @@ class Pipeline:
                         log.error(f"STT error: {exc}")
                         user_text = ""
                 stt_ms = t_stt.elapsed_ms
-                log.info(f"STT {stt_ms:.0f} ms | text={user_text[:80]!r}")
+                log.debug(f"STT transcript: {user_text!r}")
+                log.info(f"STT {stt_ms:.0f} ms | chars={len(user_text)}")
 
                 if not user_text.strip():
                     log.debug("Empty STT transcript; skipping turn.")
@@ -114,16 +119,26 @@ class Pipeline:
                 context.append({"role": "user", "content": user_text})
 
                 with StageTimer() as t_llm:
-                    reply_text = self._llm.generate(
-                        context,
-                        max_tokens=self._max_tokens,
-                        temperature=self._temperature,
-                        top_p=self._top_p,
-                    )
+                    try:
+                        reply_text = self._llm.generate(
+                            context,
+                            max_tokens=self._max_tokens,
+                            temperature=self._temperature,
+                            top_p=self._top_p,
+                        )
+                    except Exception as exc:
+                        log.error(f"LLM error: {exc}")
+                        reply_text = self._llm_error_reply
+                        llm_failed = True
                 llm_total_ms = t_llm.elapsed_ms
                 # streaming will replace this blocking call
                 llm_first_ms = llm_total_ms
-                log.info(f"LLM {llm_total_ms:.0f} ms | reply={reply_text[:80]!r}")
+                if not llm_failed:
+                    log.debug(f"LLM reply: {reply_text!r}")
+                    log.info(f"LLM {llm_total_ms:.0f} ms | chars={len(reply_text)}")
+                else:
+                    log.debug(f"LLM fallback reply: {reply_text!r}")
+                    log.info(f"LLM {llm_total_ms:.0f} ms | chars={len(reply_text)} (fallback)")
 
                 if session.cancel.is_set():
                     log.info("Cancelled after LLM; discarding reply.")
@@ -153,19 +168,24 @@ class Pipeline:
                         log.error(f"TTS error: {exc}")
                     finally:
                         session.is_speaking = False
-                tts_total_ms = t_tts.elapsed_ms
-                log.info(f"TTS {tts_total_ms:.0f} ms | completed={completed}")
+                log.info(f"TTS {t_tts.elapsed_ms:.0f} ms | completed={completed}")
 
                 # ----------------------------------------------------------
-                # Commit to history only on clean completion
+                # Commit to history only on clean completion, and if LLM didn't fail
                 # ----------------------------------------------------------
-                if completed:
+                if completed and not llm_failed:
                     session.append_turn(user_text, reply_text)
                     log.debug(f"History updated ({len(session.history)} msgs).")
                 else:
-                    log.debug("Turn cancelled; history NOT updated.")
+                    if llm_failed:
+                        log.debug("LLM failed; history NOT updated.")
+                    else:
+                        log.debug("Turn cancelled; history NOT updated.")
 
         finally:
+            if t_tts is not None:
+                tts_total_ms = t_tts.elapsed_ms
+
             # Emit report only if STT returned text (not an empty turn)
             if user_text.strip():
                 report = LatencyReport(
