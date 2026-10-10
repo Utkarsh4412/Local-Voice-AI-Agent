@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from vaak.config import AgentConfig, LLMConfig, STTConfig, TTSConfig, MemoryConfig, load_config
+from vaak.config import AgentConfig, LLMConfig, MemoryConfig, STTConfig, TTSConfig, load_config
 
 
 class TestAgentConfigDefaults:
