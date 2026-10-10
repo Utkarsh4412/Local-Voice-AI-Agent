@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import Deque
 from uuid import uuid4
 
 
@@ -42,7 +41,7 @@ class Session:
         self.language: str = language
         # maxlen=None means unlimited deque (deque(maxlen=0) is NOT valid)
         maxlen = memory_turns * 2 if memory_turns > 0 else None
-        self.history: Deque[dict[str, str]] = deque(maxlen=maxlen)
+        self.history: deque[dict[str, str]] = deque(maxlen=maxlen)
         self.cancel: threading.Event = threading.Event()
         self.is_speaking: bool = False
 
@@ -65,9 +64,7 @@ class Session:
 
     def build_context(self, system_prompt: str) -> list[dict[str, str]]:
         """Return the full message list ready to pass to BaseLLM.generate()."""
-        messages: list[dict[str, str]] = [
-            {"role": "system", "content": system_prompt}
-        ]
+        messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
         messages.extend(self.history)
         return messages
 

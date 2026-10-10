@@ -24,8 +24,8 @@ Kokoro.create() API (confirmed):
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 from huggingface_hub import hf_hub_download
@@ -40,30 +40,30 @@ from vaak.interfaces import BaseTTS
 
 # Map from BCP-47 language code → Kokoro internal lang string
 _LANG_TO_KOKORO_LANG: dict[str, str] = {
-    "en":    "en-us",
+    "en": "en-us",
     "en-gb": "en-gb",
-    "hi":    "hi",
-    "hi-en": "hi",    # Hinglish: use Hindi TTS
-    "es":    "es",
-    "fr":    "fr",
-    "it":    "it",
-    "ja":    "ja",
-    "pt":    "pt-br",
-    "zh":    "zh",
+    "hi": "hi",
+    "hi-en": "hi",  # Hinglish: use Hindi TTS
+    "es": "es",
+    "fr": "fr",
+    "it": "it",
+    "ja": "ja",
+    "pt": "pt-br",
+    "zh": "zh",
 }
 
 # Map from BCP-47 language code → default Kokoro voice ID
 _LANG_TO_DEFAULT_VOICE: dict[str, str] = {
-    "en":    "af_heart",
+    "en": "af_heart",
     "en-gb": "bf_emma",
-    "hi":    "hf_alpha",
+    "hi": "hf_alpha",
     "hi-en": "hf_alpha",  # Hinglish → Hindi voice
-    "es":    "ef_dora",
-    "fr":    "ff_siwis",
-    "it":    "if_sara",
-    "ja":    "jf_alpha",
-    "pt":    "pf_dora",
-    "zh":    "zf_xiaobei",
+    "es": "ef_dora",
+    "fr": "ff_siwis",
+    "it": "if_sara",
+    "ja": "jf_alpha",
+    "pt": "pf_dora",
+    "zh": "zf_xiaobei",
 }
 
 # HuggingFace repo that ships the ONNX model + voices file
@@ -106,9 +106,7 @@ class KokoroTTS(BaseTTS):
         self._model = Kokoro(mp, vp)
 
         self._available_voices: set[str] = set(self._model.get_voices())
-        logger.info(
-            f"Kokoro TTS loaded. {len(self._available_voices)} voices available."
-        )
+        logger.info(f"Kokoro TTS loaded. {len(self._available_voices)} voices available.")
 
         if not skip_voice_check:
             self._validate_voices()
@@ -123,10 +121,7 @@ class KokoroTTS(BaseTTS):
         Raises ConfigError if any voice ID is missing. This catches misconfigured
         or stale voice IDs early at startup rather than at synthesis time.
         """
-        missing = [
-            v for v in _LANG_TO_DEFAULT_VOICE.values()
-            if v not in self._available_voices
-        ]
+        missing = [v for v in _LANG_TO_DEFAULT_VOICE.values() if v not in self._available_voices]
         if missing:
             raise ConfigError(
                 f"The following Kokoro voice IDs are not available in the loaded "

@@ -1,5 +1,7 @@
 # Voice AI Agent
 
+[![CI](https://github.com/Utkarsh4412/vaak/actions/workflows/ci.yml/badge.svg)](https://github.com/Utkarsh4412/vaak/actions/workflows/ci.yml)
+
 An object-oriented, local voice chat agent built on FastRTC, Ollama, and Kokoro. 
 This agent acts as a virtual conversational partner that runs 100% locally on your machine.
 
@@ -46,6 +48,39 @@ You can provide a `config.yaml` file (see `config.example.yaml`) or use CLI flag
 | `--max-tokens` | Max completion tokens |
 | `--temperature` | Sampling temperature |
 | `--log-level` | Console logging verbosity |
+
+## Development
+
+Install dev dependencies and pre-commit hooks:
+```powershell
+uv sync
+uv run pre-commit install
+```
+
+Lint:
+```powershell
+uv run ruff check .
+```
+
+Format:
+```powershell
+uv run ruff format .
+```
+
+Type-check:
+```powershell
+uv run mypy vaak
+```
+
+Run tests:
+```powershell
+uv run pytest
+```
+
+Run tests with coverage:
+```powershell
+uv run pytest --cov=vaak --cov-report=term-missing
+```
 
 ## License
 MIT License

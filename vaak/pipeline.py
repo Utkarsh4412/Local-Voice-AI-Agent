@@ -13,13 +13,12 @@ The cancel event is checked between TTS chunks to support barge-in in P5.
 from __future__ import annotations
 
 import time
-from typing import Generator
+from collections.abc import Generator
 
 from loguru import logger
 
-from vaak.interfaces import BaseSTT, BaseLLM, BaseTTS
+from vaak.interfaces import BaseLLM, BaseSTT, BaseTTS
 from vaak.session import Session
-
 
 # Fallback text returned when STT produces an empty transcript
 _EMPTY_STT_FALLBACK = "I didn't catch that. Could you repeat?"
@@ -93,8 +92,7 @@ class Pipeline:
 
         stt_ms = int((time.perf_counter() - t_stt) * 1000)
         logger.info(
-            f"[{session.id}] STT {stt_ms} ms | lang={session.language!r} | "
-            f"text={user_text[:80]!r}"
+            f"[{session.id}] STT {stt_ms} ms | lang={session.language!r} | text={user_text[:80]!r}"
         )
 
         if not user_text.strip():
@@ -115,10 +113,7 @@ class Pipeline:
             top_p=self._top_p,
         )
         llm_ms = int((time.perf_counter() - t_llm) * 1000)
-        logger.info(
-            f"[{session.id}] LLM {llm_ms} ms | "
-            f"reply={reply_text[:80]!r}"
-        )
+        logger.info(f"[{session.id}] LLM {llm_ms} ms | reply={reply_text[:80]!r}")
 
         if session.cancel.is_set():
             logger.info(f"[{session.id}] Cancelled after LLM; discarding reply.")
@@ -134,9 +129,7 @@ class Pipeline:
         try:
             for chunk in self._tts.synthesize(reply_text, language=session.language):
                 if session.cancel.is_set():
-                    logger.info(
-                        f"[{session.id}] Barge-in detected mid-TTS; stopping synthesis."
-                    )
+                    logger.info(f"[{session.id}] Barge-in detected mid-TTS; stopping synthesis.")
                     break
                 yield chunk
             else:

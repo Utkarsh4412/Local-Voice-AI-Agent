@@ -17,16 +17,16 @@ copy() creates a new Session(uuid4()) for every connection.
 
 from __future__ import annotations
 
-from typing import Generator
+from collections.abc import Generator
 
-from loguru import logger
 from fastrtc import ReplyOnPause, Stream
+from loguru import logger
 
-from vaak.config import AgentConfig, load_config
-from vaak.session import Session
-from vaak.pipeline import Pipeline
-from vaak.stt.moonshine import MoonshineSTT
+from vaak.config import AgentConfig
 from vaak.llm.ollama import OllamaLLM
+from vaak.pipeline import Pipeline
+from vaak.session import Session
+from vaak.stt.moonshine import MoonshineSTT
 from vaak.tts.kokoro import KokoroTTS
 
 
@@ -69,7 +69,7 @@ class VoiceHandler:
     # FastRTC protocol: copy() creates a per-connection instance
     # ------------------------------------------------------------------
 
-    def copy(self) -> "VoiceHandler":
+    def copy(self) -> VoiceHandler:
         """Called by FastRTC once per new WebRTC connection.
 
         Creates a fresh Session (new uuid4) so each caller has isolated history.
@@ -80,10 +80,10 @@ class VoiceHandler:
             language=cfg.language,
             memory_turns=cfg.memory.memory_turns,
         )
-        logger.info(
-            f"New WebRTC connection — Session {session.id!r} "
-            f"lang={session.language!r}"
-        )
+        logger.info(f"New WebRTC connection — Session {session.id!r} lang={session.language!r}")
+        assert self._stt is not None
+        assert self._llm is not None
+        assert self._tts is not None
         pipeline = Pipeline(
             stt=self._stt,
             llm=self._llm,
@@ -106,9 +106,7 @@ class VoiceHandler:
     # FastRTC protocol: __call__ handles each audio segment
     # ------------------------------------------------------------------
 
-    def __call__(
-        self, audio: tuple[int, object]
-    ) -> Generator[tuple[int, object], None, None]:
+    def __call__(self, audio: tuple[int, object]) -> Generator[tuple[int, object], None, None]:
         """Process one audio segment — called by ReplyOnPause after VAD fires."""
         if self._session is None or self._pipeline is None:
             # Safety net: should never be called on the template instance.
@@ -123,7 +121,7 @@ class VoiceHandler:
     def build_stream(self) -> Stream:
         """Create and return the FastRTC Stream using ReplyOnPause."""
         return Stream(
-            ReplyOnPause(self),
+            ReplyOnPause(self),  # type: ignore[arg-type]
             modality="audio",
             mode="send-receive",
         )
@@ -132,6 +130,7 @@ class VoiceHandler:
 # ---------------------------------------------------------------------------
 # Factory: build a ready-to-serve VoiceHandler from an AgentConfig
 # ---------------------------------------------------------------------------
+
 
 def build_agent(config: AgentConfig) -> VoiceHandler:
     """Construct and warm up all components, return the FastRTC handler.

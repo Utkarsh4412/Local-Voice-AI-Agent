@@ -80,9 +80,7 @@ class OllamaLLM(BaseLLM):
                 return text
             except Exception as exc:
                 last_exc = exc
-                logger.warning(
-                    f"OllamaLLM attempt {attempt + 1}/2 failed: {exc}"
-                )
+                logger.warning(f"OllamaLLM attempt {attempt + 1}/2 failed: {exc}")
 
         logger.error(f"OllamaLLM failed after 2 attempts: {last_exc}")
         return "I am having trouble connecting to my local LLM. Please try again later."

@@ -2,8 +2,6 @@
 
 import threading
 
-import pytest
-
 from vaak.session import Session
 
 

@@ -12,16 +12,16 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
 from loguru import logger
-
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Sub-models
 # ---------------------------------------------------------------------------
+
 
 class STTConfig(BaseModel):
     backend: Literal["moonshine", "faster_whisper"] = "moonshine"
@@ -51,27 +51,27 @@ class LLMConfig(BaseModel):
 # Voice IDs confirmed from kokoro-onnx 0.4.7 get_voices() output, 2026-10-07.
 # Full list produced by: Kokoro.get_voices()
 _LANG_TO_DEFAULT_VOICE: dict[str, str] = {
-    "en":    "af_heart",   # American English female
-    "en-gb": "bf_emma",    # British English female
-    "hi":    "hf_alpha",   # Hindi female
-    "es":    "ef_dora",    # Spanish female
-    "fr":    "ff_siwis",   # French female
+    "en": "af_heart",  # American English female
+    "en-gb": "bf_emma",  # British English female
+    "hi": "hf_alpha",  # Hindi female
+    "es": "ef_dora",  # Spanish female
+    "fr": "ff_siwis",  # French female
 }
 
 # Mapping from lang code → Kokoro lang param.
 # Kokoro.create() requires lang= alongside voice=.
 LANG_TO_KOKORO_LANG: dict[str, str] = {
-    "en":    "en-us",
+    "en": "en-us",
     "en-gb": "en-gb",
-    "hi":    "hi",
-    "hi-en": "hi",   # Hinglish: use Hindi Kokoro lang; STT stays on Moonshine
-    "es":    "es",
-    "fr":    "fr",
+    "hi": "hi",
+    "hi-en": "hi",  # Hinglish: use Hindi Kokoro lang; STT stays on Moonshine
+    "es": "es",
+    "fr": "fr",
 }
 
 
 class TTSConfig(BaseModel):
-    voice: Optional[str] = None
+    voice: str | None = None
     """Explicit Kokoro voice ID. If None, chosen from language."""
 
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
@@ -97,6 +97,7 @@ class MemoryConfig(BaseModel):
 # Top-level config
 # ---------------------------------------------------------------------------
 
+
 class AgentConfig(BaseModel):
     # Language routing
     language: Literal["en", "en-gb", "hi", "hi-en", "es", "fr"] = "en"
@@ -108,7 +109,7 @@ class AgentConfig(BaseModel):
         "Keep replies short and clear — your words will be spoken aloud, "
         "so avoid emojis, markdown, and special characters."
     )
-    system_prompt_file: Optional[str] = None
+    system_prompt_file: str | None = None
     """Path to a .txt file whose content overrides system_prompt."""
 
     # Sub-configs
@@ -126,7 +127,7 @@ class AgentConfig(BaseModel):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     @model_validator(mode="after")
-    def _load_system_prompt_file(self) -> "AgentConfig":
+    def _load_system_prompt_file(self) -> AgentConfig:
         if self.system_prompt_file:
             p = Path(self.system_prompt_file)
             if p.exists():
@@ -143,21 +144,22 @@ class AgentConfig(BaseModel):
 # Loader helpers
 # ---------------------------------------------------------------------------
 
+
 def _env_overrides() -> dict:
     """Read VAAK_* environment variables and return a partial config dict."""
     overrides: dict = {}
     mapping = {
-        "VAAK_LANGUAGE":        ("language",),
-        "VAAK_LOG_LEVEL":       ("log_level",),
-        "VAAK_HOST":            ("host",),
-        "VAAK_PORT":            ("port",),
-        "VAAK_SHARE":           ("share",),
-        "VAAK_LLM_MODEL":       ("llm", "model"),
-        "VAAK_LLM_HOST":        ("llm", "ollama_host"),
-        "VAAK_STT_BACKEND":     ("stt", "backend"),
-        "VAAK_TTS_VOICE":       ("tts", "voice"),
-        "VAAK_TTS_SPEED":       ("tts", "speed"),
-        "VAAK_MEMORY_TURNS":    ("memory", "memory_turns"),
+        "VAAK_LANGUAGE": ("language",),
+        "VAAK_LOG_LEVEL": ("log_level",),
+        "VAAK_HOST": ("host",),
+        "VAAK_PORT": ("port",),
+        "VAAK_SHARE": ("share",),
+        "VAAK_LLM_MODEL": ("llm", "model"),
+        "VAAK_LLM_HOST": ("llm", "ollama_host"),
+        "VAAK_STT_BACKEND": ("stt", "backend"),
+        "VAAK_TTS_VOICE": ("tts", "voice"),
+        "VAAK_TTS_SPEED": ("tts", "speed"),
+        "VAAK_MEMORY_TURNS": ("memory", "memory_turns"),
     }
     for env_key, path in mapping.items():
         val = os.environ.get(env_key)
@@ -189,8 +191,8 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 
 def load_config(
-    config_path: Optional[str | Path] = None,
-    cli_overrides: Optional[dict] = None,
+    config_path: str | Path | None = None,
+    cli_overrides: dict | None = None,
 ) -> AgentConfig:
     """Load config from YAML file, then VAAK_* env vars, then CLI overrides.
 
@@ -205,10 +207,7 @@ def load_config(
     raw: dict = {}
 
     # 1. YAML file
-    path = Path(
-        config_path
-        or os.environ.get("VAAK_CONFIG", "config.yaml")
-    )
+    path = Path(config_path or os.environ.get("VAAK_CONFIG", "config.yaml"))
     if path.exists():
         with path.open(encoding="utf-8") as fh:
             loaded = yaml.safe_load(fh) or {}
