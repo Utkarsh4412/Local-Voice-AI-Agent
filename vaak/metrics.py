@@ -20,7 +20,8 @@ class LatencyReport:
     llm_total_ms: float
     tts_first_chunk_ms: float
     tts_total_ms: float
-    e2e_ms: float
+    first_audio_ms: float
+    turn_ms: float
 
     def to_dict(self) -> dict[str, str | float]:
         """Convert report to dictionary."""
@@ -39,8 +40,8 @@ class StageTimer:
                Can be injected for testing.
     """
 
-    def __init__(self, clock: Callable[[], float] = time.perf_counter) -> None:
-        self._clock = clock
+    def __init__(self, clock: Callable[[], float] | None = None) -> None:
+        self._clock = clock if clock is not None else time.perf_counter
         self.start_time: float = 0.0
         self.end_time: float = 0.0
 

@@ -13,13 +13,15 @@ class TestLatencyReport:
             llm_total_ms=30.0,
             tts_first_chunk_ms=40.0,
             tts_total_ms=50.0,
-            e2e_ms=100.0,
+            first_audio_ms=70.0,
+            turn_ms=100.0,
         )
         d = report.to_dict()
         assert d["session_id"] == "s123"
         assert d["language"] == "en"
         assert d["stt_ms"] == 10.0
-        assert d["e2e_ms"] == 100.0
+        assert d["turn_ms"] == 100.0
+        assert d["first_audio_ms"] == 70.0
 
     def test_to_json_serializes_correctly(self):
         report = LatencyReport(
@@ -30,7 +32,8 @@ class TestLatencyReport:
             llm_total_ms=30.0,
             tts_first_chunk_ms=40.0,
             tts_total_ms=50.0,
-            e2e_ms=100.0,
+            first_audio_ms=70.0,
+            turn_ms=100.0,
         )
         j = report.to_json()
         assert '"session_id": "s123"' in j
