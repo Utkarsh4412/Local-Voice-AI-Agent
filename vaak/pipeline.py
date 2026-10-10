@@ -106,7 +106,8 @@ class Pipeline:
                         user_text = ""
                 stt_ms = t_stt.elapsed_ms
                 log.debug(f"STT transcript: {user_text!r}")
-                log.info(f"STT {stt_ms:.0f} ms | chars={len(user_text)}")
+                u_len = len(user_text)
+                log.info(f"STT {stt_ms:.0f} ms | chars={u_len}")
 
                 if not user_text.strip():
                     log.debug("Empty STT transcript; skipping turn.")
@@ -133,12 +134,13 @@ class Pipeline:
                 llm_total_ms = t_llm.elapsed_ms
                 # streaming will replace this blocking call
                 llm_first_ms = llm_total_ms
+                r_len = len(reply_text)
                 if not llm_failed:
                     log.debug(f"LLM reply: {reply_text!r}")
-                    log.info(f"LLM {llm_total_ms:.0f} ms | chars={len(reply_text)}")
+                    log.info(f"LLM {llm_total_ms:.0f} ms | chars={r_len}")
                 else:
                     log.debug(f"LLM fallback reply: {reply_text!r}")
-                    log.info(f"LLM {llm_total_ms:.0f} ms | chars={len(reply_text)} (fallback)")
+                    log.info(f"LLM {llm_total_ms:.0f} ms | chars={r_len} (fallback)")
 
                 if session.cancel.is_set():
                     log.info("Cancelled after LLM; discarding reply.")
