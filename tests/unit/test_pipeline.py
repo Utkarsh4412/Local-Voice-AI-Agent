@@ -6,10 +6,9 @@ All tests run without loading any real model weights.
 import numpy as np
 import pytest
 
-from vaak.interfaces import BaseSTT, BaseLLM, BaseTTS
+from vaak.interfaces import BaseLLM, BaseSTT, BaseTTS
 from vaak.pipeline import Pipeline
 from vaak.session import Session
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -65,12 +64,12 @@ class FakeTTS(BaseTTS):
 _SILENCE = (16000, np.zeros(1600, dtype=np.float32))
 
 def _make_pipeline(**kwargs):
-    defaults = dict(
-        stt=FakeSTT(),
-        llm=FakeLLM(),
-        tts=FakeTTS(),
-        system_prompt="Be helpful.",
-    )
+    defaults: dict = {
+        "stt": FakeSTT(),
+        "llm": FakeLLM(),
+        "tts": FakeTTS(),
+        "system_prompt": "Be helpful.",
+    }
     defaults.update(kwargs)
     return Pipeline(**defaults)
 

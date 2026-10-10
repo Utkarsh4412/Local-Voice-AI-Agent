@@ -24,8 +24,8 @@ Kokoro.create() API (confirmed):
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 from huggingface_hub import hf_hub_download

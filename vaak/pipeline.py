@@ -13,13 +13,12 @@ The cancel event is checked between TTS chunks to support barge-in in P5.
 from __future__ import annotations
 
 import time
-from typing import Generator
+from collections.abc import Generator
 
 from loguru import logger
 
-from vaak.interfaces import BaseSTT, BaseLLM, BaseTTS
+from vaak.interfaces import BaseLLM, BaseSTT, BaseTTS
 from vaak.session import Session
-
 
 # Fallback text returned when STT produces an empty transcript
 _EMPTY_STT_FALLBACK = "I didn't catch that. Could you repeat?"

@@ -12,12 +12,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
 from loguru import logger
-
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Sub-models
@@ -71,7 +70,7 @@ LANG_TO_KOKORO_LANG: dict[str, str] = {
 
 
 class TTSConfig(BaseModel):
-    voice: Optional[str] = None
+    voice: str | None = None
     """Explicit Kokoro voice ID. If None, chosen from language."""
 
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
@@ -108,7 +107,7 @@ class AgentConfig(BaseModel):
         "Keep replies short and clear — your words will be spoken aloud, "
         "so avoid emojis, markdown, and special characters."
     )
-    system_prompt_file: Optional[str] = None
+    system_prompt_file: str | None = None
     """Path to a .txt file whose content overrides system_prompt."""
 
     # Sub-configs
@@ -126,7 +125,7 @@ class AgentConfig(BaseModel):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     @model_validator(mode="after")
-    def _load_system_prompt_file(self) -> "AgentConfig":
+    def _load_system_prompt_file(self) -> AgentConfig:
         if self.system_prompt_file:
             p = Path(self.system_prompt_file)
             if p.exists():
@@ -189,8 +188,8 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 
 def load_config(
-    config_path: Optional[str | Path] = None,
-    cli_overrides: Optional[dict] = None,
+    config_path: str | Path | None = None,
+    cli_overrides: dict | None = None,
 ) -> AgentConfig:
     """Load config from YAML file, then VAAK_* env vars, then CLI overrides.
 

@@ -19,8 +19,8 @@ import sys
 
 from loguru import logger
 
-from vaak.config import load_config
 from vaak.agent import build_agent
+from vaak.config import load_config
 
 
 def _build_parser() -> argparse.ArgumentParser:

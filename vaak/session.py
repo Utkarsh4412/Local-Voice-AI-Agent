@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import Deque
 from uuid import uuid4
 
 
@@ -42,7 +41,7 @@ class Session:
         self.language: str = language
         # maxlen=None means unlimited deque (deque(maxlen=0) is NOT valid)
         maxlen = memory_turns * 2 if memory_turns > 0 else None
-        self.history: Deque[dict[str, str]] = deque(maxlen=maxlen)
+        self.history: deque[dict[str, str]] = deque(maxlen=maxlen)
         self.cancel: threading.Event = threading.Event()
         self.is_speaking: bool = False
 

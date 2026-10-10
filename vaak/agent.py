@@ -17,16 +17,16 @@ copy() creates a new Session(uuid4()) for every connection.
 
 from __future__ import annotations
 
-from typing import Generator
+from collections.abc import Generator
 
-from loguru import logger
 from fastrtc import ReplyOnPause, Stream
+from loguru import logger
 
-from vaak.config import AgentConfig, load_config
-from vaak.session import Session
-from vaak.pipeline import Pipeline
-from vaak.stt.moonshine import MoonshineSTT
+from vaak.config import AgentConfig
 from vaak.llm.ollama import OllamaLLM
+from vaak.pipeline import Pipeline
+from vaak.session import Session
+from vaak.stt.moonshine import MoonshineSTT
 from vaak.tts.kokoro import KokoroTTS
 
 
@@ -69,7 +69,7 @@ class VoiceHandler:
     # FastRTC protocol: copy() creates a per-connection instance
     # ------------------------------------------------------------------
 
-    def copy(self) -> "VoiceHandler":
+    def copy(self) -> VoiceHandler:
         """Called by FastRTC once per new WebRTC connection.
 
         Creates a fresh Session (new uuid4) so each caller has isolated history.
@@ -84,6 +84,9 @@ class VoiceHandler:
             f"New WebRTC connection — Session {session.id!r} "
             f"lang={session.language!r}"
         )
+        assert self._stt is not None
+        assert self._llm is not None
+        assert self._tts is not None
         pipeline = Pipeline(
             stt=self._stt,
             llm=self._llm,
@@ -123,7 +126,7 @@ class VoiceHandler:
     def build_stream(self) -> Stream:
         """Create and return the FastRTC Stream using ReplyOnPause."""
         return Stream(
-            ReplyOnPause(self),
+            ReplyOnPause(self),  # type: ignore[arg-type]
             modality="audio",
             mode="send-receive",
         )

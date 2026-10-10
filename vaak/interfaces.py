@@ -8,7 +8,7 @@ these abstractions, never on concrete implementations.
 from __future__ import annotations
 
 import abc
-from typing import Generator, Iterator
+from collections.abc import Generator
 
 
 class BaseSTT(abc.ABC):
@@ -29,7 +29,7 @@ class BaseSTT(abc.ABC):
             Transcript string. May be empty if no speech detected.
         """
 
-    def warmup(self) -> None:
+    def warmup(self) -> None:  # noqa: B027
         """Optional: pre-load model weights. Called once at startup."""
 
 
@@ -37,7 +37,6 @@ class BaseLLM(abc.ABC):
     """Language model interface.
 
     Implementors: OllamaLLM.
-    Streaming support is optional in P1 (non-streaming); P4 adds stream=True.
     """
 
     @abc.abstractmethod
@@ -61,7 +60,7 @@ class BaseLLM(abc.ABC):
             Complete reply string.
         """
 
-    def warmup(self) -> None:
+    def warmup(self) -> None:  # noqa: B027
         """Optional: ping the backend to load the model. Called once at startup."""
 
 
@@ -91,5 +90,5 @@ class BaseTTS(abc.ABC):
             (sample_rate, samples) pairs; may be multiple chunks per call.
         """
 
-    def warmup(self) -> None:
+    def warmup(self) -> None:  # noqa: B027
         """Optional: pre-load model weights. Called once at startup."""

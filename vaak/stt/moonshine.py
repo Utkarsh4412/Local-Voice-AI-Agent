@@ -12,9 +12,8 @@ warmup(). fastrtc's MoonshineSTT.stt() expects a (sample_rate, samples) tuple.
 from __future__ import annotations
 
 import numpy as np
-from loguru import logger
-
 from fastrtc import get_stt_model as _get_fastrtc_stt
+from loguru import logger
 
 from vaak.interfaces import BaseSTT
 
