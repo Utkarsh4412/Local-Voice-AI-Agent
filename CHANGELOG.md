@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-10
+
 ### Added
 - `vaak.metrics`: `StageTimer` context manager and `LatencyReport` dataclass for tracking pipeline performance.
 - `benchmarks/bench_pipeline.py`: Benchmark script to measure STT → LLM → TTS latency using local WAV fixtures.
