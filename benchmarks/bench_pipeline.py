@@ -103,6 +103,12 @@ def main() -> int:
     # to construct our own isolated Pipeline instance for the benchmark
     from vaak.pipeline import Pipeline
 
+    captured_report = None
+
+    def on_report_cb(report):
+        nonlocal captured_report
+        captured_report = report.to_dict()
+
     pipeline = Pipeline(
         stt=agent._stt,
         llm=agent._llm,
@@ -111,6 +117,7 @@ def main() -> int:
         max_tokens=config.llm.max_tokens,
         temperature=config.llm.temperature,
         top_p=config.llm.top_p,
+        on_report=on_report_cb,
     )
 
     # Dictionary to accumulate metrics across all runs
@@ -127,31 +134,10 @@ def main() -> int:
             session.history.clear()
 
             print(f"Running {name}...")
-            # We will measure the total time here, but the internal pipeline also measures.
-            # However, the pipeline logs the LatencyReport. We can't easily extract it without parsing.
-            # Instead, we can intercept the log or just write a custom hook.
-            # Let's intercept loguru.
-
             captured_report = None
-
-            def intercept(msg):
-                nonlocal captured_report
-                rec = msg.record
-                if "Turn metrics:" in rec["message"]:
-                    try:
-                        json_str = rec["message"].split("Turn metrics: ")[1]
-                        captured_report = json.loads(json_str)
-                    except Exception:
-                        pass
-
-            from loguru import logger
-
-            handler_id = logger.add(intercept, format="{message}")
 
             # Run the generator to completion to process the whole turn
             list(pipeline.run(session, audio_tuple))
-
-            logger.remove(handler_id)
 
             if captured_report:
                 metrics["stt_ms"].append(captured_report["stt_ms"])
@@ -159,11 +145,12 @@ def main() -> int:
                 metrics["llm_total_ms"].append(captured_report["llm_total_ms"])
                 metrics["tts_first_chunk_ms"].append(captured_report["tts_first_chunk_ms"])
                 metrics["tts_total_ms"].append(captured_report["tts_total_ms"])
-                metrics["e2e_ms"].append(captured_report["e2e_ms"])
+                metrics["first_audio_ms"].append(captured_report["first_audio_ms"])
+                metrics["turn_ms"].append(captured_report["turn_ms"])
             else:
                 print(f"Warning: Failed to capture latency report for {name}")
 
-    if not metrics["e2e_ms"]:
+    if not metrics["turn_ms"]:
         print("Error: No metrics collected.", file=sys.stderr)
         return 1
 
