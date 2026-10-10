@@ -151,16 +151,32 @@ class TestPipelineEmptySTT:
 
 class TestPipelineLLMError:
     def test_llm_error_still_returns_tts_chunks(self):
-        # OllamaLLM catches errors and returns fallback text
-        p = _make_pipeline(llm=FakeLLM(raise_on_call=True))
-        # Pipeline calls llm.generate which raises — pipeline catches internally?
-        # Actually Pipeline does NOT catch LLM errors; it lets OllamaLLM's
-        # retry logic handle it. FakeLLM raises unconditionally, so Pipeline
-        # propagates. We verify no history is written.
+        # Pipeline catches LLM errors and returns fallback text
+        tts = FakeTTS()
+        captured_report = None
+
+        def on_report_cb(report):
+            nonlocal captured_report
+            captured_report = report.to_dict()
+
+        p = _make_pipeline(
+            llm=FakeLLM(raise_on_call=True),
+            tts=tts,
+            llm_error_reply="fallback message",
+            on_report=on_report_cb,
+        )
         s = Session()
-        with pytest.raises(RuntimeError):
-            _run(p, session=s)
+        chunks = _run(p, session=s)
+
+        # TTS should be called with the fallback message
+        assert tts.calls[0][0] == "fallback message"
+        # TTS chunks should be yielded
+        assert len(chunks) > 0
+        # History must NOT be written
         assert len(s.history) == 0
+        # Report must be emitted
+        assert captured_report is not None
+        assert captured_report["llm_total_ms"] >= 0.0
 
 
 class TestPipelineCancel:
@@ -249,7 +265,6 @@ class TestPipelineLatency:
         _run(p)
 
         assert captured_report is not None
-        import pytest
 
         assert captured_report["stt_ms"] == pytest.approx(100.0)
         assert captured_report["llm_total_ms"] == pytest.approx(100.0)
@@ -294,9 +309,9 @@ class TestPipelineLatency:
         gen.close()  # explicitly close
 
         assert captured_report is not None
-        import pytest
 
         assert captured_report["first_audio_ms"] == pytest.approx(250.0)
+        assert captured_report["tts_total_ms"] > 0.0
         assert captured_report["turn_ms"] == pytest.approx(300.0)
         # History must NOT be updated because it didn't complete cleanly
         assert len(s.history) == 0

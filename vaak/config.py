@@ -112,6 +112,9 @@ class AgentConfig(BaseModel):
     system_prompt_file: str | None = None
     """Path to a .txt file whose content overrides system_prompt."""
 
+    llm_error_reply: str = "I'm having trouble thinking right now. Please try again later."
+    """Fallback text to speak if the LLM generation fails."""
+
     # Sub-configs
     stt: STTConfig = Field(default_factory=STTConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
@@ -156,6 +159,7 @@ def _env_overrides() -> dict:
         "VAAK_SHARE": ("share",),
         "VAAK_LLM_MODEL": ("llm", "model"),
         "VAAK_LLM_HOST": ("llm", "ollama_host"),
+        "VAAK_LLM_ERROR_REPLY": ("llm_error_reply",),
         "VAAK_STT_BACKEND": ("stt", "backend"),
         "VAAK_TTS_VOICE": ("tts", "voice"),
         "VAAK_TTS_SPEED": ("tts", "speed"),
