@@ -51,9 +51,10 @@ You can provide a `config.yaml` file (see `config.example.yaml`) or use CLI flag
 
 ## Development
 
-Install dev dependencies:
+Install dev dependencies and pre-commit hooks:
 ```powershell
 uv sync
+uv run pre-commit install
 ```
 
 Lint:
