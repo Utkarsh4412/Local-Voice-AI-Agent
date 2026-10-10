@@ -213,3 +213,101 @@ class TestPipelineSessionIsolation:
         _run(p, session=s)
         _run(p, session=s)
         assert len(s.history) == 4  # 2 turns × 2 messages
+
+
+class TestPipelineLatency:
+    def test_latency_metrics_logged_on_clean_run(self, monkeypatch):
+        # Fake time sequence:
+        # e2e start -> stt start -> stt end -> llm start -> llm end ->
+        # tts start -> tts first chunk -> tts second chunk -> tts end -> e2e end
+        times = [
+            1.000,  # e2e start
+            1.000,  # stt start
+            1.100,  # stt end (stt_ms = 100)
+            1.100,  # llm start
+            1.200,  # llm end (llm_total_ms = 100)
+            1.200,  # tts start
+            1.250,  # tts first chunk (for tts_first_ms)
+            1.250,  # tts first chunk (for first_audio_ms)
+            1.300,  # tts second chunk
+            1.300,  # tts end
+            1.300,  # e2e end
+        ]
+
+        def fake_perf_counter():
+            return times.pop(0) if times else 1.300
+
+        monkeypatch.setattr("vaak.metrics.time.perf_counter", fake_perf_counter)
+
+        captured_report = None
+
+        def on_report_cb(report):
+            nonlocal captured_report
+            captured_report = report.to_dict()
+
+        p = _make_pipeline(tts=FakeTTS(n_chunks=2), on_report=on_report_cb)
+        _run(p)
+
+        assert captured_report is not None
+        import pytest
+
+        assert captured_report["stt_ms"] == pytest.approx(100.0)
+        assert captured_report["llm_total_ms"] == pytest.approx(100.0)
+        assert captured_report["tts_first_chunk_ms"] == pytest.approx(50.0)
+        assert captured_report["tts_total_ms"] == pytest.approx(100.0)
+        assert captured_report["first_audio_ms"] == pytest.approx(250.0)
+        assert captured_report["turn_ms"] == pytest.approx(300.0)
+
+    def test_latency_metrics_logged_on_generator_exit(self, monkeypatch):
+        # Same sequence, but we break after the first chunk
+        times = [
+            1.000,  # e2e start
+            1.000,  # stt start
+            1.100,  # stt end
+            1.100,  # llm start
+            1.200,  # llm end
+            1.200,  # tts start
+            1.250,  # tts first chunk (tts_first_ms)
+            1.250,  # tts first chunk (first_audio_ms)
+            # consumer breaks loop here, causing GeneratorExit
+            1.300,  # tts end
+            1.300,  # e2e end
+        ]
+
+        def fake_perf_counter():
+            return times.pop(0) if times else 1.300
+
+        monkeypatch.setattr("vaak.metrics.time.perf_counter", fake_perf_counter)
+
+        captured_report = None
+
+        def on_report_cb(report):
+            nonlocal captured_report
+            captured_report = report.to_dict()
+
+        p = _make_pipeline(tts=FakeTTS(n_chunks=3), on_report=on_report_cb)
+
+        # Consume only 1 chunk to trigger GeneratorExit (or just stop iterating)
+        s = Session()
+        gen = p.run(s, _SILENCE)
+        next(gen)
+        gen.close()  # explicitly close
+
+        assert captured_report is not None
+        import pytest
+
+        assert captured_report["first_audio_ms"] == pytest.approx(250.0)
+        assert captured_report["turn_ms"] == pytest.approx(300.0)
+        # History must NOT be updated because it didn't complete cleanly
+        assert len(s.history) == 0
+
+    def test_latency_metrics_not_logged_on_empty_stt(self):
+        captured_report = None
+
+        def on_report_cb(report):
+            nonlocal captured_report
+            captured_report = report.to_dict()
+
+        p = _make_pipeline(stt=FakeSTT(transcript=""), on_report=on_report_cb)
+        _run(p)
+        assert captured_report is None
